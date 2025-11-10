@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>เว็บลอยกระทง วาดรูปเองได้</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; background: #02111a; color: white; display: flex; flex-direction: column; align-items: center; }
+    h1 { font-size: 20px; margin: 10px; }
+    #drawArea, #floatArea { border: 1px solid #444; border-radius: 10px; margin: 10px; }
+    #drawArea { background: #fff; cursor: crosshair; }
+    #floatArea { background: linear-gradient(#072b46, #03202a); width: 90vw; height: 50vh; position: relative; overflow: hidden; }
+    #controls { margin: 10px; text-align: center; }
+    button { padding: 8px 14px; margin: 5px; border-radius: 6px; border: none; cursor: pointer; }
+    .color-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; margin: 3px; cursor: pointer; display: inline-block; }
+    .selected { box-shadow: 0 0 0 3px yellow; }
+  </style>
+</head>
+<body>
+  <h1>🌕 เว็บลอยกระทง วาดรูปแล้วปล่อยให้ลอย 🌊</h1>
+  <canvas id="drawArea" width="300" height="200"></canvas><br>
+  <div id="controls">
+    <div>
+      <span class="color-btn" style="background:#000" data-color="#000"></span>
+      <span class="color-btn" style="background:#fff" data-color="#fff"></span>
+      <span class="color-btn" style="background:#ff0000" data-color="#ff0000"></span>
+      <span class="color-btn" style="background:#ff69b4" data-color="#ff69b4"></span>
+      <span class="color-btn" style="background:#0000ff" data-color="#0000ff"></span>
+      <span class="color-btn" style="background:#00ff00" data-color="#00ff00"></span>
+      <span class="color-btn" style="background:#ffff00" data-color="#ffff00"></span>
+      <span class="color-btn" style="background:#8b4513" data-color="#8b4513"></span>
+      <button id="eraser" style="background:#f0f0f0;color:#000;border:1px solid #888">🩹 ยางลบ</button>
+    </div>
+    <button id="clearDraw">ล้างรูป</button>
+    <button id="launch">ปล่อยกระทง</button>
+  </div>
+  <div id="floatArea"></div>
+
+  <script>
+    const draw = document.getElementById('drawArea');
+    const ctx = draw.getContext('2d');
+    let drawing = false;
+    let currentColor = '#000';
+    let isErasing = false;
+
+    // จัดการการวาด
+    draw.addEventListener('mousedown', start);
+    draw.addEventListener('mouseup', stop);
+    draw.addEventListener('mousemove', drawLine);
+    draw.addEventListener('touchstart', start);
+    draw.addEventListener('touchend', stop);
+    draw.addEventListener('touchmove', drawLine);
+
+    function start(e){ drawing = true; ctx.beginPath(); }
+    function stop(){ drawing = false; }
+    function drawLine(e){
+      if(!drawing) return;
+      const rect = draw.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+      ctx.lineWidth = 5; ctx.lineCap = 'round';
+      if (isErasing) {
+        ctx.clearRect(x - 5, y - 5, 10, 10);
+      } else {
+        ctx.strokeStyle = currentColor;
+        ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y);
+      }
+    }
+
+    // ปุ่มเลือกสี
+    const colorButtons = document.querySelectorAll('.color-btn');
+    colorButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentColor = btn.getAttribute('data-color');
+        isErasing = false;
+        colorButtons.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+    });
+    colorButtons[0].classList.add('selected');
+
+    // ปุ่มยางลบ
+    document.getElementById('eraser').onclick = ()=>{
+      isErasing = true;
+      colorButtons.forEach(b => b.classList.remove('selected'));
+    };
+
+    // ปุ่มล้าง
+    document.getElementById('clearDraw').onclick = ()=>{
+      ctx.clearRect(0,0,draw.width,draw.height);
+    };
+
+    // ปล่อยกระทง
+    document.getElementById('launch').onclick = ()=>{
+      const floatArea = document.getElementById('floatArea');
+      const img = new Image();
+      img.src = draw.toDataURL('image/png');
+      img.style.position = 'absolute';
+      img.style.width = '100px';
+      img.style.left = Math.random() * (floatArea.clientWidth - 100) + 'px';
+      img.style.bottom = '0px';
+      floatArea.appendChild(img);
+
+      let xMove = Math.random() * 1.5 - 0.75;
+      function floatAround(){
+        let left = parseFloat(img.style.left);
+        let bottom = parseFloat(img.style.bottom);
+
+        // เคลื่อนไหวเล็กน้อยแบบลอยน้ำ
+        left += xMove;
+        bottom += Math.sin(Date.now() / 500) * 0.3;
+
+        // ตรวจสอบขอบกรอบไม่ให้ออกนอก
+        if (left < 0 || left > floatArea.clientWidth - 100) {
+          xMove = -xMove;
+        }
+
+        img.style.left = left + 'px';
+        img.style.bottom = Math.max(0, Math.min(bottom, floatArea.clientHeight - 100)) + 'px';
+        requestAnimationFrame(floatAround);
+      }
+      floatAround();
+    };
+  </script>
+</body>
+</html>
